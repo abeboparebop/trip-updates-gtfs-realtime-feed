@@ -34,8 +34,9 @@ public class GtfsRealtimeProducerDemoModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(GtfsRealtimeProviderImpl.class);
-    bind(GtfsRealtimeProvider.class).to(GtfsRealtimeProviderImpl.class);
+    // bind(GtfsRealtimeProviderImpl.class);
+    // bind(GtfsRealtimeProvider.class).to(GtfsRealtimeProviderImpl.class);
+      bind(GtfsRealtimeProviderImpl.class);
   }
 
   /**

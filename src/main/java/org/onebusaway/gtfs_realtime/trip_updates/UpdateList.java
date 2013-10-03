@@ -37,101 +37,105 @@ import org.onebusway.gtfs_realtime.exporter.GtfsRealtimeLibrary;
  */
 @Singleton
 public class UpdateList {
-    ArrayList<Update> updates = new ArrayList<Update>();
-    ArrayList<Object> busIDs = new ArrayList<Object>();
+  ArrayList<Update> updates = new ArrayList<Update>();
+  ArrayList<Object> busIDs = new ArrayList<Object>();
 
-    public void addUpdate(Update newUpdate) {
-	/* New vehicle? Add new Update to list.
+  public void addUpdate(Update newUpdate) {
+    /* New vehicle? Add new Update to list.
 	   Old vehicle + new timestamp? Replace old Update w/ new.
 	   Old vehicle + old timestamp? Do not add to list.
-	 */
-	long newTime = newUpdate.getDepTime();
-	String newId = newUpdate.getId();
-	boolean replace = false;
-	boolean addUpdate = true;
-	int iReplace = 0;
+     */
+    long newTime = newUpdate.getDepTime();
+    String newId = newUpdate.getId();
+    boolean replace = false;
+    boolean addUpdate = true;
+    int iReplace = 0;
 
-	int listLen = updates.size();
-	for (int i = 0; i < listLen; i++) {
-	    Update prevUpdate = updates.get(i);
-	    long prevTime = prevUpdate.getDepTime();
-	    String prevId = prevUpdate.getId();
+    int listLen = updates.size();
+    for (int i = 0; i < listLen; i++) {
+      Update prevUpdate = updates.get(i);
+      long prevTime = prevUpdate.getDepTime();
+      String prevId = prevUpdate.getId();
 
-	    if (prevId.equals(newId)) {
-		addUpdate = false;
-		if (prevTime < newTime) {
-		    // This bus update replaces a previous one in the feed.
-		    iReplace = i;
-		    replace = true;
-		}
-	    }
-	}
-	if (replace) {
-	    // Old vehicle + updated timestamp:
-	    updates.set(iReplace, newUpdate);
-	}
-	else if (addUpdate) {
-	    // New vehicle:
-	    updates.add(newUpdate);
-	}
-	return;
+      if (prevId.equals(newId)) {
+        addUpdate = false;
+        if (prevTime < newTime) {
+          // This bus update replaces a previous one in the feed.
+          iReplace = i;
+          replace = true;
+        }
+      }
+    }
+    if (replace) {
+      // Old vehicle + updated timestamp:
+      updates.set(iReplace, newUpdate);
+    }
+    else if (addUpdate) {
+      // New vehicle:
+      updates.add(newUpdate);
+    }
+    return;
+  }
+
+  public FeedMessage getUpdateFeedMessage() {
+    /**
+     * The FeedMessage.Builder is what we will use to build up 
+     * our GTFS-realtime feed. Add all updates to the feed
+     * and then build and return the result.
+     */
+    FeedMessage.Builder feedMessage = 
+        GtfsRealtimeLibrary.createFeedMessageBuilder();
+
+    int listLen = updates.size();
+    for (int i = 0; i < listLen; i++) {
+      Update newUpdate = updates.get(i);
+      FeedEntity.Builder newEnt = newUpdate.getFeedEntityBuilder();
+      feedMessage.addEntity(newEnt);
     }
 
-    public FeedMessage getUpdateFeedMessage() {
-	/**
-	 * The FeedMessage.Builder is what we will use to build up 
-	 * our GTFS-realtime feed. Add all updates to the feed
-	 * and then build and return the result.
-	 */
-	FeedMessage.Builder feedMessage = 
-	    GtfsRealtimeLibrary.createFeedMessageBuilder();
-	
-	int listLen = updates.size();
-	for (int i = 0; i < listLen; i++) {
-	    Update newUpdate = updates.get(i);
-	    FeedEntity.Builder newEnt = newUpdate.getFeedEntityBuilder();
-	    feedMessage.addEntity(newEnt);
-	}
+    return feedMessage.build();
+  }
 
-	return feedMessage.build();
+  public long maxTime() {
+    /**
+     * Returns latest timestamp of any vehicle updates.
+     */
+    long maxStamp = 0L;
+
+    int listLen = updates.size();
+    for (int i = 0; i < listLen; i++) {
+      Update update = updates.get(i);
+      long stamp = update.getDepTime();
+      if (stamp > maxStamp) {
+        maxStamp = stamp;
+      }
+    }
+    return maxStamp;
+  }
+
+  public void setBusIDs(ArrayList<Object> newBusIDs) {
+    busIDs = newBusIDs;
+  }
+
+  public ArrayList<Object> getBusIDs() {
+    return busIDs;
+  }
+
+  public void clearOld(long ageLim) {
+    Long timeNow = System.currentTimeMillis();
+
+    ArrayList<Update> newUpdates = new ArrayList<Update>();
+
+    for (Update update : updates) {
+      if (timeNow - update.getDepTime() < ageLim) {
+        newUpdates.add(update);
+      }
     }
 
-    public long maxTime() {
-	/**
-	 * Returns latest timestamp of any vehicle updates.
-	 */
-	long maxStamp = 0L;
+    updates = newUpdates;
+  }
 
-	int listLen = updates.size();
-	for (int i = 0; i < listLen; i++) {
-	    Update update = updates.get(i);
-	    long stamp = update.getDepTime();
-	    if (stamp > maxStamp) {
-		maxStamp = stamp;
-	    }
-	}
-	return maxStamp;
-    }
-
-    public void setBusIDs(ArrayList<Object> newBusIDs) {
-	busIDs = newBusIDs;
-    }
-
-    public ArrayList getBusIDs() {
-	return busIDs;
-    }
-
-    public void clearOld(long ageLim) {
-	Long timeNow = System.currentTimeMillis();
-
-	ArrayList<Update> newUpdates = new ArrayList<Update>();
-	
-	for (Update update : updates) {
-	    if (timeNow - update.getDepTime() < ageLim) {
-		newUpdates.add(update);
-	    }
-	}
-
-	updates = newUpdates;
-    }
+  public int getCount() {
+    return updates.size();
+  }
 }
